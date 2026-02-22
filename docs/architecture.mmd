@@ -48,8 +48,11 @@ graph TB
         Obsidian["Obsidian / Local MD<br/>search, read, plans"]
     end
 
+    subgraph BUILTIN["Built-in MCP Servers"]
+        GmailMCP["mcp/gmail/<br/>sherpa-gmail<br/>(googleapis)"]
+    end
+
     subgraph EXTERNAL["External Services"]
-        GmailMCP["Gmail MCP Server<br/>@gongrzhe/server-gmail-autoauth-mcp"]
         CalMCP["Calendar MCP Server"]
         TodoMCP["Todoist MCP Server"]
         LLM_API["LLM API<br/>Anthropic / OpenAI / Google"]
@@ -101,6 +104,7 @@ graph TB
     style MCP_MESH fill:#4A3A8A,color:#fff,stroke:#3d2e75
     style INTEGRATIONS fill:#3D2E75,color:#fff,stroke:#2d1f5e
     style CONFIG fill:#2D1F5E,color:#fff,stroke:#1d1040
+    style BUILTIN fill:#2A4A3A,color:#fff,stroke:#1a3a2a
     style EXTERNAL fill:#1A1040,color:#fff,stroke:#0d0820
     style LOCAL fill:#2D4A2D,color:#fff,stroke:#1d3a1d
     style NOTIFY fill:#5C3FCC,color:#fff,stroke:#4a2fba

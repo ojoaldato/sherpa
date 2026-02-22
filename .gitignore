@@ -36,3 +36,9 @@ coverage/
 # Bunli generated
 commands.gen.ts
 .bunli/
+
+# OAuth / credentials (never commit secrets)
+credentials.json
+oauth-keys.json
+*.pem
+*.key

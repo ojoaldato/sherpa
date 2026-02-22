@@ -13,7 +13,7 @@ A high-performance, local-first CLI that acts as an Agentic Guide for Engineerin
 | Runtime          | Bun                                        |
 | Language         | TypeScript (strict)                        |
 | CLI Framework    | bunli (`@bunli/core`)                      |
-| AI Orchestration | Vercel AI SDK (`ai` + `@ai-sdk/anthropic`) |
+| AI Orchestration | Vercel AI SDK (`ai` + `@ai-sdk/anthropic` / `openai` / `google`) |
 | MCP              | Model Context Protocol client/server mesh  |
 | CLI UX           | `@clack/prompts` for interactive flows     |
 | Auth             | OAuth 2.1 + PKCE, macOS Keychain, `.env`   |
@@ -23,7 +23,7 @@ A high-performance, local-first CLI that acts as an Agentic Guide for Engineerin
 
 | Integration      | Transport    | Mechanism                                            | Status     |
 | ---------------- | ------------ | ---------------------------------------------------- | ---------- |
-| Gmail            | `stdio`      | `@gongrzhe/server-gmail-autoauth-mcp`                | ✓ Built    |
+| Gmail            | `stdio`      | Built-in `mcp/gmail/` via `googleapis` (own server)  | ✓ Built    |
 | Google Calendar  | `stdio`/`sse`| Google Workspace MCP or local implementations        | ✓ Built    |
 | Todoist          | `stdio`      | MCP server via setup wizard                          | ✓ Built    |
 | Obsidian / Local | filesystem   | Direct `Bun.file()` + `Bun.Glob` — no MCP needed    | ✓ Built    |
@@ -51,8 +51,9 @@ Goal: Transform passive data repos (inbox, calendar, notes) into an active, mana
 - [x] `.env` management — Bun auto-loads, no dotenv
 - [x] `~/.config/sherpa/settings.json` for MCP server configs, preferences
 - [x] Zod-validated env and settings schemas
-- [ ] macOS Keychain integration for sensitive credentials
-- [ ] OAuth 2.1 + PKCE flow scaffolding for Google, Atlassian, Slack
+- [x] macOS Keychain integration for sensitive credentials
+- [x] OAuth 2.0 flow for Gmail via built-in MCP server
+- [ ] OAuth 2.1 + PKCE flow for Calendar, Todoist, Atlassian, Slack
 
 ### 1.3 MCP Client Mesh — DONE
 
@@ -73,7 +74,7 @@ Goal: Transform passive data repos (inbox, calendar, notes) into an active, mana
 
 ### 1.5 Gmail Semantic Triage — DONE
 
-- [x] Gmail MCP integration via `@gongrzhe/server-gmail-autoauth-mcp`
+- [x] Gmail MCP integration via built-in `mcp/gmail/` server (replaced third-party `@gongrzhe/server-gmail-autoauth-mcp`)
 - [x] `sherpa triage` — guided inbox triage with AI analysis
 - [x] 4 actions per email: ignore (archive), filter forever, create Todoist task, draft reply
 - [x] Interactive per-email walkthrough or bulk archive mode
@@ -175,17 +176,21 @@ Goal: Full-spectrum SDLC automation from conception to production monitoring.
 | --- | --- | --- |
 | CLI-first vs. CLI+backend | CLI-first | All Phase 1 commands are pull-based. Daemon deferred to Phase 2 when reactive features (Slack watch, alerts) need it. |
 | MCP vs. direct API | MCP where possible | Standardized tool interface, swappable servers, aligns with ecosystem. Local docs are the exception (direct fs for privacy). |
+| Build vs. buy for MCP servers | Build for sensitive integrations | Third-party MCP servers for email/calendar are opaque and can exfiltrate tokens. We own `mcp/gmail/` using `googleapis` directly. |
 | Roadmap location | `ROADMAP.md` + GitHub Issues | `ROADMAP.md` for narrative vision, Issues for trackable tasks. |
-| LLM provider | Anthropic via AI SDK | AI SDK allows swapping providers later. Anthropic-first for quality. |
+| LLM provider | Configurable via AI SDK | Supports Anthropic, OpenAI, Google. User chooses in `sherpa setup`. |
 
 ---
 
 ## Security Principles
 
-- **Local-first**: all credentials in `.env` + macOS Keychain, never in VCS
+- **Local-first**: all credentials in macOS Keychain + local OAuth tokens, never in VCS
+- **Build over buy**: own MCP servers for sensitive integrations (email, calendar) — third-party servers are opaque attack surface
+- **Challenge every dependency**: 5-question audit before adding any package (see `CLAUDE.md`)
 - **Minimal trust**: prefer local MCP servers for sensitive data (Obsidian, local files)
-- **OAuth 2.1 + PKCE**: for all cloud service auth (Google, Atlassian, Slack)
+- **OAuth 2.0**: for all cloud service auth (Google, Atlassian, Slack)
 - **Token exchange on-device only**: no intermediary servers
+- **Path traversal protection**: filesystem access restricted to configured roots
 - **Audit trail**: log all agent actions locally for transparency
 
 ---

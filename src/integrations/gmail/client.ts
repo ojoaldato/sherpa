@@ -40,18 +40,12 @@ export async function readEmail(messageId: string): Promise<string> {
 
 export async function archiveEmail(messageId: string): Promise<void> {
   const mcp = getMcpManager();
-  await mcp.callTool(SERVER, "modify_email", {
-    messageId,
-    removeLabelIds: ["INBOX"],
-  });
+  await mcp.callTool(SERVER, "archive_email", { messageIds: [messageId] });
 }
 
 export async function batchArchive(messageIds: string[]): Promise<void> {
   const mcp = getMcpManager();
-  await mcp.callTool(SERVER, "batch_modify_emails", {
-    messageIds,
-    removeLabelIds: ["INBOX"],
-  });
+  await mcp.callTool(SERVER, "archive_email", { messageIds });
   log.success(`Archived ${messageIds.length} messages`);
 }
 
@@ -60,7 +54,14 @@ export async function createFilter(
   action: { addLabelIds?: string[]; removeLabelIds?: string[] }
 ): Promise<void> {
   const mcp = getMcpManager();
-  await mcp.callTool(SERVER, "create_filter", { criteria, action });
+  await mcp.callTool(SERVER, "create_filter", {
+    from: criteria.from,
+    to: criteria.to,
+    subject: criteria.subject,
+    query: criteria.query,
+    addLabels: action.addLabelIds,
+    removeLabels: action.removeLabelIds,
+  });
 }
 
 export async function createDraft(
@@ -69,6 +70,6 @@ export async function createDraft(
   body: string
 ): Promise<void> {
   const mcp = getMcpManager();
-  await mcp.callTool(SERVER, "draft_email", { to: [to], subject, body });
+  await mcp.callTool(SERVER, "draft_email", { to, subject, body });
   log.success(`Draft created → ${to}`);
 }

@@ -3,6 +3,7 @@ import * as clack from "@clack/prompts";
 import chalk from "chalk";
 import { loadSettings, saveSettings, setSecret, hasSecret, PROVIDERS, type Settings, type McpServerConfig, type ProviderName } from "../config/index.ts";
 import { log } from "../utils/index.ts";
+import { BUILTIN_GMAIL_SERVER } from "./shared.ts";
 
 function parseMcpCommand(input: string): { command: string; args: string[] } {
   const parts = input.trim().split(/\s+/);
@@ -75,20 +76,40 @@ export default defineCommand({
       return;
     }
 
-    const gmailInput = await clack.text({
-      message: "Gmail MCP server (command + args)",
-      placeholder: "npx @gongrzhe/server-gmail-autoauth-mcp",
-      initialValue: formatMcpCommand(existing.mcpServers["gmail"]) || "npx @gongrzhe/server-gmail-autoauth-mcp",
+    const builtinGmailCmd = formatMcpCommand(BUILTIN_GMAIL_SERVER);
+    const gmailChoice = await clack.select({
+      message: "Gmail integration",
+      options: [
+        { value: "builtin", label: "Built-in Sherpa Gmail server (recommended)", hint: "uses googleapis directly" },
+        { value: "custom", label: "Custom MCP server command" },
+        { value: "skip", label: "Skip Gmail" },
+      ],
+      initialValue: "builtin",
     });
 
-    if (clack.isCancel(gmailInput)) {
+    if (clack.isCancel(gmailChoice)) {
       clack.cancel("Setup cancelled.");
       return;
     }
 
+    let gmailInput: string | symbol = "";
+    if (gmailChoice === "builtin") {
+      gmailInput = builtinGmailCmd;
+    } else if (gmailChoice === "custom") {
+      gmailInput = await clack.text({
+        message: "Gmail MCP server (command + args)",
+        placeholder: "bun path/to/server.ts",
+        initialValue: formatMcpCommand(existing.mcpServers["gmail"]) || "",
+      });
+      if (clack.isCancel(gmailInput)) {
+        clack.cancel("Setup cancelled.");
+        return;
+      }
+    }
+
     const calendarInput = await clack.text({
       message: "Google Calendar MCP server (leave empty to skip)",
-      placeholder: "npx @gongrzhe/server-google-calendar-mcp",
+      placeholder: "npx @modelcontextprotocol/server-google-calendar",
       initialValue: formatMcpCommand(existing.mcpServers["google-calendar"]) || "",
     });
 
@@ -116,7 +137,9 @@ export default defineCommand({
 
     const newServers: Record<string, McpServerConfig> = { ...existing.mcpServers };
 
-    if (gmailInput) {
+    if (gmailChoice === "builtin") {
+      newServers["gmail"] = BUILTIN_GMAIL_SERVER;
+    } else if (gmailInput && (gmailInput as string).length > 0) {
       const { command, args } = parseMcpCommand(gmailInput as string);
       newServers["gmail"] = { command, args, env: {}, transport: "stdio" };
     }
@@ -150,7 +173,10 @@ export default defineCommand({
     log.dim(`  Settings:  ~/.config/sherpa/settings.json`);
     log.dim(`  API keys:  macOS Keychain (com.sherpa.cli)`);
     log.raw("");
-    log.info("Gmail auth: run `npx @gongrzhe/server-gmail-autoauth-mcp auth` to authenticate with Google.");
+    if (gmailChoice === "builtin" || gmailChoice === "custom") {
+      log.info("Gmail auth: run `bun mcp/gmail/server.ts auth` to authenticate with Google.");
+      log.dim("  Place your OAuth keys at ~/.sherpa/gmail/oauth-keys.json first.");
+    }
 
     clack.outro(chalk.dim("Ready to guide. Run `sherpa triage` to start."));
   },

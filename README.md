@@ -46,17 +46,19 @@ bun install
 
 ### Gmail authentication
 
-Sherpa uses [server-gmail-autoauth-mcp](https://github.com/gongrzhe/server-gmail-autoauth-mcp) for Gmail access. One-time setup:
+Sherpa includes its own Gmail MCP server — no third-party packages touching your credentials. One-time setup:
 
-1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (Desktop app type)
-2. Download the JSON and place it at `~/.gmail-mcp/gcp-oauth.keys.json`
-3. Run auth:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a project (or use existing), enable the **Gmail API**
+3. Create **OAuth client ID** credentials (Desktop app type)
+4. Download the JSON and save it to `~/.sherpa/gmail/oauth-keys.json`
+5. Run the auth flow:
 
 ```bash
-npx @gongrzhe/server-gmail-autoauth-mcp auth
+bun mcp/gmail/server.ts auth
 ```
 
-This opens a browser for Google login and saves credentials locally.
+This opens a browser for Google login and saves credentials locally at `~/.sherpa/gmail/credentials.json`.
 
 ### Configure Sherpa
 
@@ -191,8 +193,11 @@ graph TB
         Obsidian["Obsidian / Local MD<br/>search · read · plans"]
     end
 
+    subgraph BUILTIN["Built-in MCP Servers"]
+        GmailMCP["mcp/gmail/<br/>sherpa-gmail<br/>(googleapis)"]
+    end
+
     subgraph EXTERNAL["External Services"]
-        GmailMCP["Gmail MCP Server"]
         CalMCP["Calendar MCP Server"]
         TodoMCP["Todoist MCP Server"]
         LLM_API["LLM API<br/>Anthropic / OpenAI / Google"]
@@ -251,6 +256,9 @@ src/
   integrations/        # Gmail, Calendar, Todoist, Obsidian wrappers
   config/              # Settings, env, Keychain, LLM provider
   utils/               # Logger, formatters, notifications, path guards
+
+mcp/
+  gmail/               # Built-in Gmail MCP server (googleapis + OAuth)
 ```
 
 ## Building
@@ -272,9 +280,11 @@ bun test                           # Run tests
 
 ## Security
 
-- API keys are stored in **macOS Keychain** (`com.sherpa.cli`), not in plaintext files. Run `sherpa setup` to store them securely.
-- Local document access (Obsidian, markdown) is restricted to directories you configure. Sherpa will refuse to read files outside those paths.
-- Gmail, Calendar, and Todoist access goes through MCP servers with OAuth credentials stored locally at `~/.gmail-mcp/`.
+- **API keys** are stored in **macOS Keychain** (`com.sherpa.cli`), not in plaintext files. Run `sherpa setup` to store them securely.
+- **Gmail integration** uses Sherpa's own MCP server (`mcp/gmail/`) built on `googleapis` — no third-party packages touching your email credentials.
+- **Local document access** (Obsidian, markdown) is restricted to directories you configure. Sherpa will refuse to read files outside those paths.
+- **OAuth tokens** are stored locally at `~/.sherpa/gmail/credentials.json` with no intermediary servers.
+- **Dependency policy:** Every package is audited for security before inclusion. Sensitive integrations are built in-house rather than delegated to third-party MCP servers. See [CLAUDE.md](CLAUDE.md) for the full audit checklist.
 - No data is sent anywhere except your chosen LLM API (Anthropic, OpenAI, or Google). Sherpa is local-first.
 
 ## License
