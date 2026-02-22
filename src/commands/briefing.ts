@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { runAgent, BRIEFING_SYSTEM } from "../agent/index.ts";
 import { getEventsForDay } from "../integrations/calendar/index.ts";
 import { getActiveTasks } from "../integrations/todoist/index.ts";
-import { listInboxMessages } from "../integrations/gmail/index.ts";
+import { searchEmails, type EmailMessage } from "../integrations/gmail/index.ts";
 import { formatDate, sectionHeader } from "../utils/index.ts";
 import { log } from "../utils/index.ts";
 import { connectConfiguredServers } from "./shared.ts";
@@ -29,12 +29,12 @@ export default defineCommand({
     const [events, tasks, inbox] = await Promise.allSettled([
       getEventsForDay(today),
       getActiveTasks(),
-      listInboxMessages(15),
+      searchEmails("in:inbox is:unread", 15),
     ]);
 
     const calendarData = events.status === "fulfilled" ? events.value : [];
     const taskData = tasks.status === "fulfilled" ? tasks.value : [];
-    const emailData = inbox.status === "fulfilled" ? inbox.value.messages : [];
+    const emailData: EmailMessage[] = inbox.status === "fulfilled" ? inbox.value : [];
 
     s.message("Synthesizing briefing...");
 

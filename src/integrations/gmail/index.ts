@@ -1,10 +1,9 @@
 export {
-  listInboxMessages,
-  getMessage,
-  archiveMessages,
-  batchModifyLabels,
+  searchEmails,
+  readEmail,
+  archiveEmail,
+  batchArchive,
+  createFilter,
   createDraft,
-  searchMessages,
   type EmailMessage,
-  type EmailBatch,
 } from "./client.ts";

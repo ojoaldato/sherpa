@@ -4,6 +4,11 @@ import chalk from "chalk";
 import { loadSettings, saveSettings, type Settings, type McpServerConfig } from "../config/index.ts";
 import { log } from "../utils/index.ts";
 
+function parseMcpCommand(input: string): { command: string; args: string[] } {
+  const parts = input.trim().split(/\s+/);
+  return { command: parts[0]!, args: parts.slice(1) };
+}
+
 export default defineCommand({
   name: "setup",
   description: "Configure Sherpa: MCP servers, vault paths, and API keys",
@@ -37,49 +42,52 @@ export default defineCommand({
       return;
     }
 
-    const gmailMcp = await clack.text({
-      message: "Gmail MCP server command (e.g. npx @anthropic/gmail-mcp)",
-      placeholder: "npx @anthropic/gmail-mcp",
-      initialValue: existing.mcpServers["gmail"]?.command ?? "",
+    const gmailInput = await clack.text({
+      message: "Gmail MCP server (command + args)",
+      placeholder: "npx @gongrzhe/server-gmail-autoauth-mcp",
+      initialValue: formatMcpCommand(existing.mcpServers["gmail"]) || "npx @gongrzhe/server-gmail-autoauth-mcp",
     });
 
-    if (clack.isCancel(gmailMcp)) {
+    if (clack.isCancel(gmailInput)) {
       clack.cancel("Setup cancelled.");
       return;
     }
 
-    const calendarMcp = await clack.text({
-      message: "Google Calendar MCP server command",
-      placeholder: "npx @anthropic/google-calendar-mcp",
-      initialValue: existing.mcpServers["google-calendar"]?.command ?? "",
+    const calendarInput = await clack.text({
+      message: "Google Calendar MCP server (leave empty to skip)",
+      placeholder: "npx @gongrzhe/server-google-calendar-mcp",
+      initialValue: formatMcpCommand(existing.mcpServers["google-calendar"]) || "",
     });
 
-    if (clack.isCancel(calendarMcp)) {
+    if (clack.isCancel(calendarInput)) {
       clack.cancel("Setup cancelled.");
       return;
     }
 
-    const todoistMcp = await clack.text({
-      message: "Todoist MCP server command",
-      placeholder: "npx @anthropic/todoist-mcp",
-      initialValue: existing.mcpServers["todoist"]?.command ?? "",
+    const todoistInput = await clack.text({
+      message: "Todoist MCP server (leave empty to skip)",
+      placeholder: "npx @abhiz123/todoist-mcp-server",
+      initialValue: formatMcpCommand(existing.mcpServers["todoist"]) || "",
     });
 
-    if (clack.isCancel(todoistMcp)) {
+    if (clack.isCancel(todoistInput)) {
       clack.cancel("Setup cancelled.");
       return;
     }
 
     const newServers: Record<string, McpServerConfig> = { ...existing.mcpServers };
 
-    if (gmailMcp) {
-      newServers["gmail"] = { command: gmailMcp as string, args: [], env: {}, transport: "stdio" };
+    if (gmailInput) {
+      const { command, args } = parseMcpCommand(gmailInput as string);
+      newServers["gmail"] = { command, args, env: {}, transport: "stdio" };
     }
-    if (calendarMcp) {
-      newServers["google-calendar"] = { command: calendarMcp as string, args: [], env: {}, transport: "stdio" };
+    if (calendarInput) {
+      const { command, args } = parseMcpCommand(calendarInput as string);
+      newServers["google-calendar"] = { command, args, env: {}, transport: "stdio" };
     }
-    if (todoistMcp) {
-      newServers["todoist"] = { command: todoistMcp as string, args: [], env: {}, transport: "stdio" };
+    if (todoistInput) {
+      const { command, args } = parseMcpCommand(todoistInput as string);
+      newServers["todoist"] = { command, args, env: {}, transport: "stdio" };
     }
 
     const settings: Settings = {
@@ -95,12 +103,20 @@ export default defineCommand({
 
     const envPath = `${process.env.HOME}/.config/sherpa/.env`;
     const envContent = `ANTHROPIC_API_KEY=${anthropicKey}\n`;
+    await Bun.$`mkdir -p ${process.env.HOME}/.config/sherpa`.quiet();
     await Bun.write(envPath, envContent);
 
     log.success("Configuration saved.");
     log.dim(`  Settings: ~/.config/sherpa/settings.json`);
     log.dim(`  Env:      ~/.config/sherpa/.env`);
+    log.raw("");
+    log.info("Gmail auth: run `npx @gongrzhe/server-gmail-autoauth-mcp auth` to authenticate with Google.");
 
     clack.outro(chalk.dim("Ready to guide. Run `sherpa triage` to start."));
   },
 });
+
+function formatMcpCommand(config?: McpServerConfig): string {
+  if (!config || !config.command) return "";
+  return [config.command, ...config.args].join(" ");
+}

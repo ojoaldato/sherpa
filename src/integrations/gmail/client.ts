@@ -5,85 +5,70 @@ const SERVER = "gmail";
 
 export interface EmailMessage {
   id: string;
-  threadId: string;
+  subject: string;
   from: string;
   to: string;
-  subject: string;
-  snippet: string;
   date: string;
-  labels: string[];
+  snippet: string;
   body?: string;
+  labels?: string[];
 }
 
-export interface EmailBatch {
-  messages: EmailMessage[];
-  nextPageToken?: string;
-  resultSizeEstimate: number;
+function extractText(result: unknown): string {
+  const content = result as { content?: Array<{ type: string; text?: string }> };
+  return content.content?.find((c) => c.type === "text")?.text ?? "{}";
 }
 
-export async function listInboxMessages(maxResults = 50): Promise<EmailBatch> {
+export async function searchEmails(query: string, maxResults = 50): Promise<EmailMessage[]> {
   const mcp = getMcpManager();
-  const result = await mcp.callTool(SERVER, "gmail_list_messages", {
-    query: "in:inbox",
-    maxResults,
-  });
+  const result = await mcp.callTool(SERVER, "search_emails", { query, maxResults });
+  const text = extractText(result);
 
-  const content = result.content as Array<{ type: string; text?: string }>;
-  const text = content.find((c) => c.type === "text")?.text ?? "{}";
-  return JSON.parse(text);
-}
-
-export async function getMessage(messageId: string): Promise<EmailMessage> {
-  const mcp = getMcpManager();
-  const result = await mcp.callTool(SERVER, "gmail_get_message", {
-    messageId,
-  });
-
-  const content = result.content as Array<{ type: string; text?: string }>;
-  const text = content.find((c) => c.type === "text")?.text ?? "{}";
-  return JSON.parse(text);
-}
-
-export async function archiveMessages(messageIds: string[]): Promise<void> {
-  const mcp = getMcpManager();
-  for (const id of messageIds) {
-    await mcp.callTool(SERVER, "gmail_modify_message", {
-      messageId: id,
-      removeLabelIds: ["INBOX"],
-    });
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : parsed.messages ?? [];
+  } catch {
+    return [];
   }
+}
+
+export async function readEmail(messageId: string): Promise<string> {
+  const mcp = getMcpManager();
+  const result = await mcp.callTool(SERVER, "read_email", { messageId });
+  return extractText(result);
+}
+
+export async function archiveEmail(messageId: string): Promise<void> {
+  const mcp = getMcpManager();
+  await mcp.callTool(SERVER, "modify_email", {
+    messageId,
+    removeLabelIds: ["INBOX"],
+  });
+}
+
+export async function batchArchive(messageIds: string[]): Promise<void> {
+  const mcp = getMcpManager();
+  await mcp.callTool(SERVER, "batch_modify_emails", {
+    messageIds,
+    removeLabelIds: ["INBOX"],
+  });
   log.success(`Archived ${messageIds.length} messages`);
 }
 
-export async function batchModifyLabels(
-  messageIds: string[],
-  addLabels: string[] = [],
-  removeLabels: string[] = []
+export async function createFilter(
+  criteria: { from?: string; to?: string; subject?: string; query?: string },
+  action: { addLabelIds?: string[]; removeLabelIds?: string[] }
 ): Promise<void> {
   const mcp = getMcpManager();
-  for (const id of messageIds) {
-    await mcp.callTool(SERVER, "gmail_modify_message", {
-      messageId: id,
-      addLabelIds: addLabels,
-      removeLabelIds: removeLabels,
-    });
-  }
+  await mcp.callTool(SERVER, "create_filter", { criteria, action });
 }
 
-export async function createDraft(to: string, subject: string, body: string): Promise<void> {
+export async function createDraft(
+  to: string,
+  subject: string,
+  body: string
+): Promise<void> {
   const mcp = getMcpManager();
-  await mcp.callTool(SERVER, "gmail_create_draft", { to, subject, body });
+  await mcp.callTool(SERVER, "draft_email", { to: [to], subject, body });
   log.success(`Draft created → ${to}`);
-}
-
-export async function searchMessages(query: string, maxResults = 20): Promise<EmailBatch> {
-  const mcp = getMcpManager();
-  const result = await mcp.callTool(SERVER, "gmail_list_messages", {
-    query,
-    maxResults,
-  });
-
-  const content = result.content as Array<{ type: string; text?: string }>;
-  const text = content.find((c) => c.type === "text")?.text ?? "{}";
-  return JSON.parse(text);
 }
