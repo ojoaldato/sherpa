@@ -1,2 +1,3 @@
-export { getEnv, type Env } from "./env.ts";
+export { getEnv, loadEnv, type Env } from "./env.ts";
 export { loadSettings, saveSettings, type Settings, type McpServerConfig } from "./settings.ts";
+export { setSecret, getSecret, deleteSecret, hasSecret } from "./keychain.ts";

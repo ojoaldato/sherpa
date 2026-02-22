@@ -1,7 +1,7 @@
 import { defineCommand } from "@bunli/core";
 import * as clack from "@clack/prompts";
 import chalk from "chalk";
-import { loadSettings, saveSettings, type Settings, type McpServerConfig } from "../config/index.ts";
+import { loadSettings, saveSettings, setSecret, hasSecret, type Settings, type McpServerConfig } from "../config/index.ts";
 import { log } from "../utils/index.ts";
 
 function parseMcpCommand(input: string): { command: string; args: string[] } {
@@ -16,13 +16,14 @@ export default defineCommand({
     clack.intro(chalk.hex("#7C5CFC")("⛰ sherpa setup"));
 
     const existing = await loadSettings();
+    const hasKey = await hasSecret("ANTHROPIC_API_KEY");
 
     const anthropicKey = await clack.text({
-      message: "Anthropic API key",
+      message: hasKey ? "Anthropic API key (stored in Keychain — leave blank to keep)" : "Anthropic API key",
       placeholder: "sk-ant-...",
-      initialValue: process.env.ANTHROPIC_API_KEY ?? "",
+      initialValue: "",
       validate: (v) => {
-        if (!v || v.length === 0) return "Required for AI features";
+        if (!hasKey && (!v || v.length === 0)) return "Required for AI features";
       },
     });
 
@@ -75,6 +76,12 @@ export default defineCommand({
       return;
     }
 
+    // Store API key in macOS Keychain
+    if (anthropicKey && (anthropicKey as string).length > 0) {
+      await setSecret("ANTHROPIC_API_KEY", anthropicKey as string);
+      log.success("API key stored in macOS Keychain.");
+    }
+
     const newServers: Record<string, McpServerConfig> = { ...existing.mcpServers };
 
     if (gmailInput) {
@@ -101,14 +108,9 @@ export default defineCommand({
 
     await saveSettings(settings);
 
-    const envPath = `${process.env.HOME}/.config/sherpa/.env`;
-    const envContent = `ANTHROPIC_API_KEY=${anthropicKey}\n`;
-    await Bun.$`mkdir -p ${process.env.HOME}/.config/sherpa`.quiet();
-    await Bun.write(envPath, envContent);
-
     log.success("Configuration saved.");
-    log.dim(`  Settings: ~/.config/sherpa/settings.json`);
-    log.dim(`  Env:      ~/.config/sherpa/.env`);
+    log.dim(`  Settings:  ~/.config/sherpa/settings.json`);
+    log.dim(`  API keys:  macOS Keychain (com.sherpa.cli)`);
     log.raw("");
     log.info("Gmail auth: run `npx @gongrzhe/server-gmail-autoauth-mcp auth` to authenticate with Google.");
 

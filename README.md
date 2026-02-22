@@ -169,7 +169,7 @@ bun test                           # Run tests
 
 ## Security
 
-- API keys are stored in plaintext at `~/.config/sherpa/.env`. Keep your machine secure. macOS Keychain support is planned.
+- API keys are stored in **macOS Keychain** (`com.sherpa.cli`), not in plaintext files. Run `sherpa setup` to store them securely.
 - Local document access (Obsidian, markdown) is restricted to directories you configure. Sherpa will refuse to read files outside those paths.
 - Gmail, Calendar, and Todoist access goes through MCP servers with OAuth credentials stored locally at `~/.gmail-mcp/`.
 - No data is sent anywhere except the Anthropic API for LLM calls. Sherpa is local-first.
