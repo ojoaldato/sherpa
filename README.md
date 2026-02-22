@@ -33,7 +33,7 @@ Sherpa is a local-first CLI that acts as an agentic guide for Engineering Manage
 ### Prerequisites
 
 - [Bun](https://bun.sh) runtime (v1.0+)
-- An [Anthropic API key](https://console.anthropic.com)
+- An LLM API key — [Anthropic](https://console.anthropic.com), [OpenAI](https://platform.openai.com), or [Google](https://aistudio.google.com)
 - A [Google Cloud project](https://console.cloud.google.com) with Gmail API enabled (for inbox features)
 
 ### From source
@@ -65,7 +65,8 @@ bun src/cli.ts setup
 ```
 
 The wizard walks you through:
-- Anthropic API key
+- LLM provider (Anthropic, OpenAI, or Google) and API key — stored in macOS Keychain
+- Model selection (defaults to provider's best)
 - Obsidian vault / local markdown path
 - Gmail, Calendar, and Todoist MCP server commands
 
@@ -137,6 +138,108 @@ A summary prints after every triage session:
 └──────────────────────────────────────────────
 ```
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph USER["🧑 Engineering Manager"]
+        Terminal["Terminal"]
+        WhatsApp["WhatsApp<br/>(future)"]
+    end
+
+    subgraph CLI["⛰ Sherpa CLI · Bun + bunli"]
+        Entry["src/cli.ts<br/>Entry Point"]
+
+        subgraph COMMANDS["Commands"]
+            Chat["sherpa<br/>(REPL default)"]
+            Triage["sherpa triage<br/>Inbox Cleanup"]
+            Plan["sherpa plan<br/>Weekly Planner"]
+            Briefing["sherpa briefing<br/>Daily Readout"]
+            Setup["sherpa setup<br/>Config Wizard"]
+        end
+
+        subgraph AGENT["Agent Layer · Vercel AI SDK"]
+            REPL["repl.ts<br/>streamText + REPL loop"]
+            Runner["sherpa.ts<br/>generateText wrapper"]
+            Tools["tools.ts<br/>14 AI SDK tools"]
+            Confirm["confirm.ts<br/>Destructive action gates"]
+            Prompts["prompts.ts<br/>System prompts"]
+        end
+
+        subgraph NOTIFY["Notification System"]
+            Summary["notify.ts<br/>Summary builder"]
+            TermChan["Terminal ✓"]
+            WAChan["WhatsApp<br/>(stub)"]
+        end
+    end
+
+    subgraph CONFIG["Config & Security"]
+        Settings["settings.json<br/>~/.config/sherpa/"]
+        Keychain["macOS Keychain<br/>com.sherpa.cli"]
+        Provider["provider.ts<br/>LLM provider factory"]
+        PathGuard["paths.ts<br/>Traversal protection"]
+    end
+
+    subgraph MCP_MESH["MCP Client Mesh"]
+        Manager["McpClientManager<br/>stdio / sse / http"]
+    end
+
+    subgraph INTEGRATIONS["Integrations"]
+        Gmail["Gmail<br/>search · read · archive<br/>filter · draft"]
+        Calendar["Google Calendar<br/>list events · create"]
+        Todoist["Todoist<br/>tasks · create · complete"]
+        Obsidian["Obsidian / Local MD<br/>search · read · plans"]
+    end
+
+    subgraph EXTERNAL["External Services"]
+        GmailMCP["Gmail MCP Server"]
+        CalMCP["Calendar MCP Server"]
+        TodoMCP["Todoist MCP Server"]
+        LLM_API["LLM API<br/>Anthropic / OpenAI / Google"]
+    end
+
+    subgraph LOCAL["Local Filesystem"]
+        Vault["Obsidian Vault<br/>Notes · Plans · Goals"]
+    end
+
+    Terminal --> Entry
+    Entry -->|no args| Chat
+    Entry -->|subcommand| Triage & Plan & Briefing & Setup
+
+    Chat --> REPL
+    Triage --> Runner
+    Plan --> Runner
+    Briefing --> Runner
+
+    REPL --> Tools
+    Runner --> Prompts
+    Tools --> Confirm
+
+    Tools --> Gmail & Calendar & Todoist & Obsidian
+
+    Gmail --> Manager
+    Calendar --> Manager
+    Todoist --> Manager
+    Obsidian -->|direct filesystem| Vault
+
+    Manager --> GmailMCP & CalMCP & TodoMCP
+
+    REPL --> LLM_API
+    Runner --> LLM_API
+    Provider --> LLM_API
+
+    Keychain -->|API keys| Provider
+    Settings --> Manager
+    PathGuard --> Obsidian
+
+    Triage --> Summary
+    Summary --> TermChan --> Terminal
+    Summary -.-> WAChan -.-> WhatsApp
+
+    Setup --> Keychain
+    Setup --> Settings
+```
+
 ## Project structure
 
 ```
@@ -146,8 +249,8 @@ src/
   agent/               # AI: REPL loop, tools, prompts, confirmations
   mcp/                 # MCP client manager (stdio/sse/http)
   integrations/        # Gmail, Calendar, Todoist, Obsidian wrappers
-  config/              # Settings + env management
-  utils/               # Logger, formatters, notification system
+  config/              # Settings, env, Keychain, LLM provider
+  utils/               # Logger, formatters, notifications, path guards
 ```
 
 ## Building
@@ -172,7 +275,7 @@ bun test                           # Run tests
 - API keys are stored in **macOS Keychain** (`com.sherpa.cli`), not in plaintext files. Run `sherpa setup` to store them securely.
 - Local document access (Obsidian, markdown) is restricted to directories you configure. Sherpa will refuse to read files outside those paths.
 - Gmail, Calendar, and Todoist access goes through MCP servers with OAuth credentials stored locally at `~/.gmail-mcp/`.
-- No data is sent anywhere except the Anthropic API for LLM calls. Sherpa is local-first.
+- No data is sent anywhere except your chosen LLM API (Anthropic, OpenAI, or Google). Sherpa is local-first.
 
 ## License
 
