@@ -1,5 +1,5 @@
 import { getEnv } from "../../config/index.ts";
-import { log } from "../../utils/index.ts";
+import { log, assertPathAllowed, assertDirsAllowed } from "../../utils/index.ts";
 import { Glob } from "bun";
 
 export interface LocalDocument {
@@ -24,6 +24,8 @@ export async function searchLocalDocs(
     log.warn("No vault/document paths configured. Set OBSIDIAN_VAULT_PATH or pass dirs.");
     return [];
   }
+
+  await assertDirsAllowed(searchDirs);
 
   const results: LocalDocument[] = [];
   const queryLower = query.toLowerCase();
@@ -53,10 +55,11 @@ export async function searchLocalDocs(
   return results.sort((a, b) => b.modified.getTime() - a.modified.getTime());
 }
 
-export async function readDocument(path: string): Promise<string> {
-  const file = Bun.file(path);
+export async function readDocument(filePath: string): Promise<string> {
+  await assertPathAllowed(filePath);
+  const file = Bun.file(filePath);
   if (!(await file.exists())) {
-    throw new Error(`Document not found: ${path}`);
+    throw new Error(`Document not found: ${filePath}`);
   }
   return file.text();
 }

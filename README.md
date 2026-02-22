@@ -167,6 +167,13 @@ bun run dev -- triage              # Dev mode with hot reload
 bun test                           # Run tests
 ```
 
+## Security
+
+- API keys are stored in plaintext at `~/.config/sherpa/.env`. Keep your machine secure. macOS Keychain support is planned.
+- Local document access (Obsidian, markdown) is restricted to directories you configure. Sherpa will refuse to read files outside those paths.
+- Gmail, Calendar, and Todoist access goes through MCP servers with OAuth credentials stored locally at `~/.gmail-mcp/`.
+- No data is sent anywhere except the Anthropic API for LLM calls. Sherpa is local-first.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
