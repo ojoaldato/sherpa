@@ -1,0 +1,107 @@
+graph TB
+    subgraph USER["🧑 Engineering Manager"]
+        Terminal["Terminal"]
+        WhatsApp["WhatsApp<br/>(future)"]
+    end
+
+    subgraph CLI["⛰ Sherpa CLI (Bun + bunli)"]
+        Entry["src/cli.ts<br/>Entry Point"]
+        
+        subgraph COMMANDS["Commands"]
+            Chat["sherpa<br/>(REPL default)"]
+            Triage["sherpa triage<br/>Inbox Cleanup"]
+            Plan["sherpa plan<br/>Weekly Planner"]
+            Briefing["sherpa briefing<br/>Daily Readout"]
+            Setup["sherpa setup<br/>Config Wizard"]
+        end
+
+        subgraph AGENT["Agent Layer (Vercel AI SDK)"]
+            REPL["repl.ts<br/>streamText + REPL loop"]
+            Runner["sherpa.ts<br/>generateText wrapper"]
+            Tools["tools.ts<br/>14 AI SDK tools"]
+            Confirm["confirm.ts<br/>Destructive action gates"]
+            Prompts["prompts.ts<br/>System prompts"]
+        end
+
+        subgraph NOTIFY["Notification System"]
+            Summary["notify.ts<br/>Summary builder"]
+            TermChan["Terminal Channel ✓"]
+            WAChan["WhatsApp Channel<br/>(stub)"]
+        end
+    end
+
+    subgraph CONFIG["Config & Security"]
+        Settings["settings.json<br/>~/.config/sherpa/"]
+        Keychain["macOS Keychain<br/>com.sherpa.cli"]
+        Provider["provider.ts<br/>LLM provider factory"]
+        PathGuard["paths.ts<br/>Traversal protection"]
+    end
+
+    subgraph MCP_MESH["MCP Client Mesh"]
+        Manager["McpClientManager<br/>stdio / sse / http"]
+    end
+
+    subgraph INTEGRATIONS["Integrations"]
+        Gmail["Gmail<br/>search, read, archive,<br/>filter, draft"]
+        Calendar["Google Calendar<br/>list events, create"]
+        Todoist["Todoist<br/>tasks, create, complete"]
+        Obsidian["Obsidian / Local MD<br/>search, read, plans"]
+    end
+
+    subgraph EXTERNAL["External Services"]
+        GmailMCP["Gmail MCP Server<br/>@gongrzhe/server-gmail-autoauth-mcp"]
+        CalMCP["Calendar MCP Server"]
+        TodoMCP["Todoist MCP Server"]
+        LLM_API["LLM API<br/>Anthropic / OpenAI / Google"]
+    end
+
+    subgraph LOCAL["Local Filesystem"]
+        Vault["Obsidian Vault<br/>Notes, Plans, Goals"]
+    end
+
+    Terminal --> Entry
+    Entry -->|no args| Chat
+    Entry -->|subcommand| Triage & Plan & Briefing & Setup
+
+    Chat --> REPL
+    Triage --> Runner
+    Plan --> Runner
+    Briefing --> Runner
+
+    REPL --> Tools
+    Runner --> Prompts
+    Tools --> Confirm
+
+    Tools --> Gmail & Calendar & Todoist & Obsidian
+
+    Gmail --> Manager
+    Calendar --> Manager
+    Todoist --> Manager
+    Obsidian -->|"Direct Bun.file()"| Vault
+
+    Manager --> GmailMCP & CalMCP & TodoMCP
+
+    REPL --> LLM_API
+    Runner --> LLM_API
+    Provider --> LLM_API
+
+    Keychain -->|API keys| Provider
+    Settings --> Manager
+    PathGuard --> Obsidian
+
+    Triage --> Summary
+    Summary --> TermChan --> Terminal
+    Summary -.-> WAChan -.-> WhatsApp
+
+    Setup --> Keychain
+    Setup --> Settings
+
+    style CLI fill:#7C5CFC,color:#fff,stroke:#5a3fd4
+    style AGENT fill:#6B4FCC,color:#fff,stroke:#5a3fd4
+    style MCP_MESH fill:#4A3A8A,color:#fff,stroke:#3d2e75
+    style INTEGRATIONS fill:#3D2E75,color:#fff,stroke:#2d1f5e
+    style CONFIG fill:#2D1F5E,color:#fff,stroke:#1d1040
+    style EXTERNAL fill:#1A1040,color:#fff,stroke:#0d0820
+    style LOCAL fill:#2D4A2D,color:#fff,stroke:#1d3a1d
+    style NOTIFY fill:#5C3FCC,color:#fff,stroke:#4a2fba
+    style USER fill:#333,color:#fff,stroke:#555
