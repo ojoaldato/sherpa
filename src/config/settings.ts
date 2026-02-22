@@ -10,9 +10,10 @@ const mcpServerSchema = z.object({
 
 const settingsSchema = z.object({
   llm: z.object({
+    provider: z.enum(["anthropic", "openai", "google"]).default("anthropic"),
     model: z.string().default("claude-sonnet-4-20250514"),
     maxTokens: z.number().default(4096),
-  }).default(() => ({ model: "claude-sonnet-4-20250514", maxTokens: 4096 })),
+  }).default(() => ({ provider: "anthropic" as const, model: "claude-sonnet-4-20250514", maxTokens: 4096 })),
   mcpServers: z.record(z.string(), mcpServerSchema).default({}),
   obsidian: z.object({
     vaultPath: z.string().optional(),

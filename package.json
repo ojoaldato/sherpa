@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",
+    "@ai-sdk/google": "^3.0.30",
+    "@ai-sdk/openai": "^3.0.30",
     "@bunli/core": "^0.5.4",
     "@clack/prompts": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.26.0",

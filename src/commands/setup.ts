@@ -1,7 +1,7 @@
 import { defineCommand } from "@bunli/core";
 import * as clack from "@clack/prompts";
 import chalk from "chalk";
-import { loadSettings, saveSettings, setSecret, hasSecret, type Settings, type McpServerConfig } from "../config/index.ts";
+import { loadSettings, saveSettings, setSecret, hasSecret, PROVIDERS, type Settings, type McpServerConfig, type ProviderName } from "../config/index.ts";
 import { log } from "../utils/index.ts";
 
 function parseMcpCommand(input: string): { command: string; args: string[] } {
@@ -11,23 +11,55 @@ function parseMcpCommand(input: string): { command: string; args: string[] } {
 
 export default defineCommand({
   name: "setup",
-  description: "Configure Sherpa: MCP servers, vault paths, and API keys",
+  description: "Configure Sherpa: LLM provider, MCP servers, vault paths",
   handler: async () => {
     clack.intro(chalk.hex("#7C5CFC")("⛰ sherpa setup"));
 
     const existing = await loadSettings();
-    const hasKey = await hasSecret("ANTHROPIC_API_KEY");
 
-    const anthropicKey = await clack.text({
-      message: hasKey ? "Anthropic API key (stored in Keychain — leave blank to keep)" : "Anthropic API key",
-      placeholder: "sk-ant-...",
+    // LLM provider selection
+    const provider = await clack.select({
+      message: "LLM provider",
+      options: Object.entries(PROVIDERS).map(([key, val]) => ({
+        value: key,
+        label: val.label,
+        hint: key === existing.llm.provider ? "current" : undefined,
+      })),
+      initialValue: existing.llm.provider,
+    });
+
+    if (clack.isCancel(provider)) {
+      clack.cancel("Setup cancelled.");
+      return;
+    }
+
+    const selectedProvider = provider as ProviderName;
+    const providerInfo = PROVIDERS[selectedProvider];
+    const keyExists = await hasSecret(providerInfo.envKey);
+
+    const apiKey = await clack.text({
+      message: keyExists
+        ? `${providerInfo.label} API key (in Keychain — leave blank to keep)`
+        : `${providerInfo.label} API key`,
+      placeholder: selectedProvider === "anthropic" ? "sk-ant-..." : "sk-...",
       initialValue: "",
       validate: (v) => {
-        if (!hasKey && (!v || v.length === 0)) return "Required for AI features";
+        if (!keyExists && (!v || v.length === 0)) return `Required for ${providerInfo.label}`;
       },
     });
 
-    if (clack.isCancel(anthropicKey)) {
+    if (clack.isCancel(apiKey)) {
+      clack.cancel("Setup cancelled.");
+      return;
+    }
+
+    const model = await clack.text({
+      message: "Model name",
+      placeholder: providerInfo.defaultModel,
+      initialValue: existing.llm.provider === selectedProvider ? existing.llm.model : providerInfo.defaultModel,
+    });
+
+    if (clack.isCancel(model)) {
       clack.cancel("Setup cancelled.");
       return;
     }
@@ -77,9 +109,9 @@ export default defineCommand({
     }
 
     // Store API key in macOS Keychain
-    if (anthropicKey && (anthropicKey as string).length > 0) {
-      await setSecret("ANTHROPIC_API_KEY", anthropicKey as string);
-      log.success("API key stored in macOS Keychain.");
+    if (apiKey && (apiKey as string).length > 0) {
+      await setSecret(providerInfo.envKey, apiKey as string);
+      log.success(`${providerInfo.label} API key stored in macOS Keychain.`);
     }
 
     const newServers: Record<string, McpServerConfig> = { ...existing.mcpServers };
@@ -99,6 +131,11 @@ export default defineCommand({
 
     const settings: Settings = {
       ...existing,
+      llm: {
+        provider: selectedProvider,
+        model: (model as string) || providerInfo.defaultModel,
+        maxTokens: existing.llm.maxTokens,
+      },
       obsidian: {
         ...existing.obsidian,
         vaultPath: (vaultPath as string) || undefined,
@@ -109,6 +146,7 @@ export default defineCommand({
     await saveSettings(settings);
 
     log.success("Configuration saved.");
+    log.dim(`  Provider:  ${providerInfo.label} (${settings.llm.model})`);
     log.dim(`  Settings:  ~/.config/sherpa/settings.json`);
     log.dim(`  API keys:  macOS Keychain (com.sherpa.cli)`);
     log.raw("");

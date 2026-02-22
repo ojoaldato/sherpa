@@ -1,9 +1,7 @@
 import { streamText, stepCountIs } from "ai";
 import type { ModelMessage } from "@ai-sdk/provider-utils";
-import { anthropic } from "@ai-sdk/anthropic";
-import * as clack from "@clack/prompts";
 import chalk from "chalk";
-import { loadSettings } from "../config/index.ts";
+import { loadSettings, createModel, loadProviderApiKey } from "../config/index.ts";
 import { createSherpaTools } from "./tools.ts";
 import { log } from "../utils/index.ts";
 import * as readline from "node:readline";
@@ -43,6 +41,7 @@ You have tools to access:
 
 export async function startRepl(): Promise<void> {
   const settings = await loadSettings();
+  await loadProviderApiKey(settings.llm.provider);
   const tools = createSherpaTools();
   const history: ModelMessage[] = [];
 
@@ -108,7 +107,7 @@ export async function startRepl(): Promise<void> {
 
     try {
       const result = streamText({
-        model: anthropic(settings.llm.model),
+        model: createModel(settings.llm.provider, settings.llm.model),
         system: REPL_SYSTEM,
         messages: history,
         tools,

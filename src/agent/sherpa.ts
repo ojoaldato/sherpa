@@ -1,7 +1,6 @@
 import { generateText, stepCountIs, type Tool } from "ai";
 import type { ModelMessage } from "@ai-sdk/provider-utils";
-import { anthropic } from "@ai-sdk/anthropic";
-import { loadSettings } from "../config/index.ts";
+import { loadSettings, createModel, loadProviderApiKey } from "../config/index.ts";
 
 export interface AgentOptions {
   system: string;
@@ -14,9 +13,10 @@ export async function runAgent(
   options: AgentOptions
 ): Promise<string> {
   const settings = await loadSettings();
+  await loadProviderApiKey(settings.llm.provider);
 
   const result = await generateText({
-    model: anthropic(settings.llm.model),
+    model: createModel(settings.llm.provider, settings.llm.model),
     system: options.system,
     messages,
     tools: options.tools,
