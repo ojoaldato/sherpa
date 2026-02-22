@@ -1,0 +1,38 @@
+{
+  "name": "sherpa",
+  "version": "0.1.0",
+  "description": "The Command-Line Guide for the Sociotechnical Leader",
+  "module": "src/cli.ts",
+  "type": "module",
+  "bin": {
+    "sherpa": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bunli dev --entry src/cli.ts",
+    "build": "bunli build",
+    "start": "bun src/cli.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.46",
+    "@bunli/core": "^0.5.4",
+    "@clack/prompts": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "ai": "^6.0.97",
+    "chalk": "^5.6.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bunli": "^0.5.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ojoaldato/sherpa.git"
+  }
+}

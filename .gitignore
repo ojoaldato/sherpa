@@ -6,7 +6,7 @@ dist/
 out/
 
 # Bun
-bun.lockb
+bun.lock
 
 # Environment
 .env
@@ -32,3 +32,7 @@ Thumbs.db
 
 # Coverage
 coverage/
+
+# Bunli generated
+commands.gen.ts
+.bunli/
